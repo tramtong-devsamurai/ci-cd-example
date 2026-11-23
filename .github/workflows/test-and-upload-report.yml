@@ -1,4 +1,4 @@
-```yaml
+
 name: Test & Upload Report
 
 on:
@@ -34,43 +34,50 @@ jobs:
 
       - name: Check AgileTest Secrets
         env:
-          BASE_URL: ${{ secrets.AGILETEST_BASE_URL }}
-          AUTH_URL: ${{ secrets.AGILETEST_AUTH_BASE_URL }}
-          CLIENT_ID: ${{ secrets.AGILETEST_CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.AGILETEST_CLIENT_SECRET }}
+          AGILETEST_BASE_URL: ${{ secrets.AGILETEST_BASE_URL }}
+          AGILETEST_AUTH_BASE_URL: ${{ secrets.AGILETEST_AUTH_BASE_URL }}
+          AGILETEST_CLIENT_ID: ${{ secrets.AGILETEST_CLIENT_ID }}
+          AGILETEST_CLIENT_SECRET: ${{ secrets.AGILETEST_CLIENT_SECRET }}
         run: |
-          if [ -z "$BASE_URL" ]; then
-            echo "ERROR: AGILETEST_BASE_URL is EMPTY"
+          set -e
+
+          check_url() {
+            local name="$1"
+            local value="$2"
+
+            if [ -z "$value" ]; then
+              echo "ERROR: $name is EMPTY"
+              exit 1
+            fi
+
+            if [[ ! "$value" =~ ^https?:// ]]; then
+              echo "ERROR: $name is missing HTTP/HTTPS protocol"
+              exit 1
+            fi
+
+            echo "OK: $name has valid HTTP/HTTPS protocol"
+
+            curl -sS \
+              --connect-timeout 10 \
+              -o /dev/null \
+              -w "$name HTTP Status: %{http_code}\n" \
+              "$value"
+          }
+
+          check_url "AGILETEST_BASE_URL" "$AGILETEST_BASE_URL"
+          check_url "AGILETEST_AUTH_BASE_URL" "$AGILETEST_AUTH_BASE_URL"
+
+          if [ -z "$AGILETEST_CLIENT_ID" ]; then
+            echo "ERROR: AGILETEST_CLIENT_ID is EMPTY"
             exit 1
           fi
 
-          if [ -z "$AUTH_URL" ]; then
-            echo "ERROR: AGILETEST_AUTH_BASE_URL is EMPTY"
+          if [ -z "$AGILETEST_CLIENT_SECRET" ]; then
+            echo "ERROR: AGILETEST_CLIENT_SECRET is EMPTY"
             exit 1
           fi
 
-          if [[ "$BASE_URL" != http://* && "$BASE_URL" != https://* ]]; then
-            echo "ERROR: AGILETEST_BASE_URL is missing HTTP/HTTPS"
-            exit 1
-          fi
-
-          if [[ "$AUTH_URL" != http://* && "$AUTH_URL" != https://* ]]; then
-            echo "ERROR: AGILETEST_AUTH_BASE_URL is missing HTTP/HTTPS"
-            exit 1
-          fi
-
-          if [ -z "$CLIENT_ID" ] || [ -z "$CLIENT_SECRET" ]; then
-            echo "ERROR: Client credentials are EMPTY"
-            exit 1
-          fi
-
-          echo "All AgileTest Secrets are configured."
-
-          echo "Checking BASE_URL..."
-          curl -sS -o /dev/null -w "BASE_URL HTTP Status: %{http_code}\n" --connect-timeout 10 "$BASE_URL"
-
-          echo "Checking AUTH_URL..."
-          curl -sS -o /dev/null -w "AUTH_URL HTTP Status: %{http_code}\n" --connect-timeout 10 "$AUTH_URL"
+          echo "OK: Client ID and Client Secret are configured"
 
       - name: Upload report to AgileTest.App
         env:
@@ -88,4 +95,3 @@ jobs:
             ghcr.io/agiletestapp/agiletest-cli:latest \
             test-execution import --framework-type junit --project-key FOR \
             /reports/junit-report.xml
-```
