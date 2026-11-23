@@ -34,36 +34,43 @@ jobs:
 
       - name: Check AgileTest Secrets
         env:
-          AGILETEST_BASE_URL: ${{ secrets.AGILETEST_BASE_URL }}
-          AGILETEST_AUTH_BASE_URL: ${{ secrets.AGILETEST_AUTH_BASE_URL }}
-          AGILETEST_CLIENT_ID: ${{ secrets.AGILETEST_CLIENT_ID }}
-          AGILETEST_CLIENT_SECRET: ${{ secrets.AGILETEST_CLIENT_SECRET }}
+          BASE_URL: ${{ secrets.AGILETEST_BASE_URL }}
+          AUTH_URL: ${{ secrets.AGILETEST_AUTH_BASE_URL }}
+          CLIENT_ID: ${{ secrets.AGILETEST_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.AGILETEST_CLIENT_SECRET }}
         run: |
-          for name in AGILETEST_BASE_URL AGILETEST_AUTH_BASE_URL; do
-            value="${!name}"
+          if [ -z "$BASE_URL" ]; then
+            echo "ERROR: AGILETEST_BASE_URL is EMPTY"
+            exit 1
+          fi
 
-            if [ -z "$value" ]; then
-              echo "ERROR: $name is EMPTY"
-              exit 1
-            elif [[ "$value" =~ ^https?://[^/[:space:]]+ ]]; then
-              echo "OK: $name has HTTP/HTTPS protocol"
-              curl -sS -o /dev/null \
-                -w "$name HTTP Status: %{http_code}\n" \
-                --connect-timeout 10 "$value"
-            else
-              echo "ERROR: $name has invalid URL format"
-              exit 1
-            fi
-          done
+          if [ -z "$AUTH_URL" ]; then
+            echo "ERROR: AGILETEST_AUTH_BASE_URL is EMPTY"
+            exit 1
+          fi
 
-          for name in AGILETEST_CLIENT_ID AGILETEST_CLIENT_SECRET; do
-            if [ -z "${!name}" ]; then
-              echo "ERROR: $name is EMPTY"
-              exit 1
-            else
-              echo "OK: $name is configured"
-            fi
-          done
+          if [[ "$BASE_URL" != http://* && "$BASE_URL" != https://* ]]; then
+            echo "ERROR: AGILETEST_BASE_URL is missing HTTP/HTTPS"
+            exit 1
+          fi
+
+          if [[ "$AUTH_URL" != http://* && "$AUTH_URL" != https://* ]]; then
+            echo "ERROR: AGILETEST_AUTH_BASE_URL is missing HTTP/HTTPS"
+            exit 1
+          fi
+
+          if [ -z "$CLIENT_ID" ] || [ -z "$CLIENT_SECRET" ]; then
+            echo "ERROR: Client credentials are EMPTY"
+            exit 1
+          fi
+
+          echo "All AgileTest Secrets are configured."
+
+          echo "Checking BASE_URL..."
+          curl -sS -o /dev/null -w "BASE_URL HTTP Status: %{http_code}\n" --connect-timeout 10 "$BASE_URL"
+
+          echo "Checking AUTH_URL..."
+          curl -sS -o /dev/null -w "AUTH_URL HTTP Status: %{http_code}\n" --connect-timeout 10 "$AUTH_URL"
 
       - name: Upload report to AgileTest.App
         env:
@@ -77,7 +84,7 @@ jobs:
             -e AGILETEST_AUTH_BASE_URL \
             -e AGILETEST_CLIENT_ID \
             -e AGILETEST_CLIENT_SECRET \
-            -v ${{ github.workspace }}/reports:/reports \
+            -v "${{ github.workspace }}/reports:/reports" \
             ghcr.io/agiletestapp/agiletest-cli:latest \
             test-execution import --framework-type junit --project-key FOR \
             /reports/junit-report.xml
