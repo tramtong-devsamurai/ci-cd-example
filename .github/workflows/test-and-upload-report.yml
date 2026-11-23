@@ -32,53 +32,6 @@ jobs:
           name: junit-report
           path: reports/
 
-      - name: Check AgileTest Secrets
-        env:
-          AGILETEST_BASE_URL: ${{ secrets.AGILETEST_BASE_URL }}
-          AGILETEST_AUTH_BASE_URL: ${{ secrets.AGILETEST_AUTH_BASE_URL }}
-          AGILETEST_CLIENT_ID: ${{ secrets.AGILETEST_CLIENT_ID }}
-          AGILETEST_CLIENT_SECRET: ${{ secrets.AGILETEST_CLIENT_SECRET }}
-        run: |
-          set -e
-
-          check_url() {
-            local name="$1"
-            local value="$2"
-
-            if [ -z "$value" ]; then
-              echo "ERROR: $name is EMPTY"
-              exit 1
-            fi
-
-            if [[ ! "$value" =~ ^https?:// ]]; then
-              echo "ERROR: $name is missing HTTP/HTTPS protocol"
-              exit 1
-            fi
-
-            echo "OK: $name has valid HTTP/HTTPS protocol"
-
-            curl -sS \
-              --connect-timeout 10 \
-              -o /dev/null \
-              -w "$name HTTP Status: %{http_code}\n" \
-              "$value"
-          }
-
-          check_url "AGILETEST_BASE_URL" "$AGILETEST_BASE_URL"
-          check_url "AGILETEST_AUTH_BASE_URL" "$AGILETEST_AUTH_BASE_URL"
-
-          if [ -z "$AGILETEST_CLIENT_ID" ]; then
-            echo "ERROR: AGILETEST_CLIENT_ID is EMPTY"
-            exit 1
-          fi
-
-          if [ -z "$AGILETEST_CLIENT_SECRET" ]; then
-            echo "ERROR: AGILETEST_CLIENT_SECRET is EMPTY"
-            exit 1
-          fi
-
-          echo "OK: Client ID and Client Secret are configured"
-
       - name: Upload report to AgileTest.App
         env:
           AGILETEST_BASE_URL: ${{ secrets.AGILETEST_BASE_URL }}
