@@ -5,6 +5,17 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      PROJECT_KEY:
+        description: "AgileTest Project Key"
+        required: true
+        type: string
+
+      TEST_EXECUTION_KEY:
+        description: "AgileTest Test Execution Key"
+        required: true
+        type: string
+
   schedule:
     - cron: "0 0 * * *"
 
